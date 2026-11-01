@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tung Chung Photo Archive</title>
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/MarkerCluster.css">
+    <link rel="stylesheet" href="css/MarkerCluster.Default.css">
+    <link rel="stylesheet" href="css/qgis2web.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f3ef;
+            color: #333;
+            overflow: hidden;
+        }
+        .header {
+            height: 50px;
+            background: #e8e4dc;
+            border-bottom: 1px solid #d0ccc4;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            flex-shrink: 0;
+        }
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #4a4a4a;
+            letter-spacing: 0.5px;
+        }
+        .header .subtitle {
+            font-size: 12px;
+            color: #888;
+            font-style: italic;
+        }
+        .main-container {
+            display: flex;
+            height: calc(100vh - 50px);
+            overflow: hidden;
+        }
+        .sidebar-left {
+            width: 220px;
+            background: #f5f3ef;
+            border-right: 1px solid #ddd;
+            padding: 15px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .sidebar-left h2 {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #ddd;
+        }
+        .filter-section {
+            margin-bottom: 18px;
+        }
+        .filter-section h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 8px;
+        }
+        .filter-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #555;
+            cursor: pointer;
+        }
+        .filter-item input[type="checkbox"] {
+            margin-right: 6px;
+            cursor: pointer;
+        }
+        .filter-item label {
+            cursor: pointer;
+            user-select: none;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .filter-buttons button {
+            padding: 4px 10px;
+            font-size: 11px;
+            border: 1px solid #bbb;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+        .filter-buttons button:hover {
+            background: #eee;
+        }
+        .photo-count {
+            font-size: 12px;
+            color: #666;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+        .instructions {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.5;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+        /* Game section */
+        .game-section {
+            margin-top: 18px;
+            padding-top: 12px;
+            border-top: 2px solid #c9a96e;
+        }
+        .game-section h3 {
+            color: #8b6914;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .game-section h3::before {
+            content: '\2726';
+            font-size: 14px;
+        }
+        .game-btn {
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid #c9a96e;
+            background: #faf6ef;
+            color: #8b6914;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+        .game-btn:hover {
+            background: #f0e8d8;
+        }
+        .game-btn.primary {
+            background: #8b6914;
+            color: #fff;
+            border-color: #8b6914;
+        }
+        .game-btn.primary:hover {
+            background: #6b5010;
+        }
+        .game-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #faf6ef;
+            border-radius: 4px;
+        }
+        .game-stats .stat {
+            text-align: center;
+        }
+        .game-stats .stat-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #8b6914;
+        }
+        .game-stats .stat-label {
+            font-size: 10px;
+            color: #999;
+        }
+        .game-clue-box {
+            background: #fff8e7;
+            border: 1px solid #f0d78c;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .game-clue-box .clue-label {
+            font-size: 10px;
+            color: #b8860b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+        .game-clue-box .clue-text {
+            font-size: 13px;
+            color: #5c4a1e;
+            font-weight: 600;
+        }
+        .game-feedback {
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .game-feedback.correct {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+        }
+        .game-feedback.wrong {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+        }
+        .game-feedback.hint {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #90caf9;
+        }
+        .map-container {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .sidebar-right {
+            width: 300px;
+            background: #fff;
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+        .photo-panel {
+            padding: 0;
+        }
+        .photo-image-wrapper {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .photo-image-wrapper img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .photo-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.25);
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            width: 36px;
+            height: 60px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+        .photo-nav-btn:hover {
+            background: rgba(255,255,255,0.45);
+        }
+        .photo-nav-btn.prev { left: 0; border-radius: 0 4px 4px 0; }
+        .photo-nav-btn.next { right: 0; border-radius: 4px 0 0 4px; }
+        .photo-nav-btn.disabled {
+            opacity: 0.2;
+            cursor: not-allowed;
+        }
+        .photo-nav-btn.disabled:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        .photo-image-placeholder {
+            color: #666;
+            font-size: 12px;
+            text-align: center;
+        }
+        .photo-details {
+            padding: 15px;
+        }
+        .photo-details .label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        .photo-details .photo-id {
+            font-size: 22px;
+            font-weight: 300;
+            color: #333;
+            margin-bottom: 2px;
+        }
+        .photo-details .place-name {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .photo-meta-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .photo-meta-table td {
+            padding: 6px 0;
+            font-size: 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .photo-meta-table td:first-child {
+            color: #888;
+            width: 35%;
+        }
+        .photo-meta-table td:last-child {
+            color: #333;
+        }
+        .precision-note {
+            margin-top: 10px;
+            padding: 8px 10px;
+            background: #f8f6f0;
+            border-left: 3px solid #b8860b;
+            border-radius: 0 4px 4px 0;
+            font-size: 11px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .precision-note .note-label {
+            font-weight: 600;
+            color: #8b6914;
+            margin-bottom: 2px;
+        }
+        #left-precision-note.precision-note {
+            margin-top: 8px;
+        }
+        .modern-view-section {
+            margin-top: 12px;
+            padding: 0 15px 15px;
+            display: none;
+        }
+        .modern-view-section.visible {
+            display: block;
+        }
+        .modern-view-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .modern-view-ps {
+            font-size: 10px;
+            color: #999;
+            font-style: italic;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+        #modern-map {
+            width: 100%;
+            height: 180px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        .no-photo-selected {
+            padding: 40px 20px;
+            text-align: center;
+            color: #999;
+            font-size: 13px;
+        }
+        .leaflet-tooltip {
+            background: none;
+            box-shadow: none;
+            border: none;
+            pointer-events: none;
+            margin-top: -6px;
+        }
+        .leaflet-tooltip-left:before, .leaflet-tooltip-right:before {
+            border: 0px;
+        }
+        .place-name-tooltip {
+            background: none !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        .place-name-tooltip div {
+            text-shadow: 0 0 3px rgba(255,255,255,0.9), 0 0 6px rgba(255,255,255,0.7);
+        }
+        /* Cluster spiderfy legs — darker for visibility on light basemap */
+        .leaflet-cluster-spider-leg {
+            stroke: #555 !important;
+            stroke-width: 2px !important;
+            stroke-opacity: 0.8 !important;
+        }
+        /* Highlight selected marker */
+        .marker-selected {
+            stroke: #ff4444 !important;
+            stroke-width: 3px !important;
+        }
+        /* Game candidate marker style */
+        .game-candidate-marker {
+            animation: pulse-gold 1.5s infinite;
+        }
+        @keyframes pulse-gold {
+            0% { fill-opacity: 0.9; }
+            50% { fill-opacity: 0.5; }
+            100% { fill-opacity: 0.9; }
+        }
+        /* Responsive */
+        @media (max-width: 900px) {
+            .sidebar-left { width: 180px; }
+            .sidebar-right { width: 240px; }
+        }
+        @media (max-width: 768px) {
+            .main-container { flex-direction: column; }
+            .sidebar-left {
+                width: 100%;
+                height: auto;
+                max-height: 200px;
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+            }
+            .sidebar-right {
+                width: 100%;
+                height: auto;
+                max-height: 250px;
+                border-left: none;
+                border-top: 1px solid #ddd;
+            }
+            .map-container { height: 50vh; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Tung Chung Photo Archive</h1>
+        <span class="subtitle">Map-based exploration of field photographs</span>
+    </div>
+    <div class="main-container">
+        <div class="sidebar-left">
+            <h2>Browse Photographs</h2>
+            
+            <!-- Basemap selector -->
+            <div class="filter-section">
+                <h3>Base Map</h3>
+                <div id="basemap-filters">
+                    <div class="filter-item">
+                        <input type="checkbox" id="basemap-aerial" data-category="basemap">
+                        <label for="basemap-aerial">Overlay Aerial Photo</label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Village selector -->
+            <div class="filter-section">
+                <h3>Village</h3>
+                <div id="village-filters">
+                    <div class="filter-item">
+                        <input type="checkbox" id="filter-village-ma" checked data-category="village" data-value="馬灣村">
+                        <label for="filter-village-ma">馬灣村</label>
+                    </div>
+                    <div class="filter-item">
+                        <input type="checkbox" id="filter-village-wong" checked data-category="village" data-value="黃泥屋村">
+                        <label for="filter-village-wong">黃泥屋村</label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sub-filters container -->
+            <div id="sub-filters" style="display:none;">
+                <div class="filter-section">
+                    <h3>Box No.</h3>
+                    <div id="box-no-filters"></div>
+                </div>
+                <div class="filter-section">
+                    <h3>Subject</h3>
+                    <div id="subject-filters"></div>
+                </div>
+                <div class="filter-section">
+                    <h3>Precision</h3>
+                    <div id="precision-filters"></div>
+                    <div id="left-precision-note" style="display:none;"></div>
+                </div>
+            </div>
+            
+            <div class="filter-buttons">
+                <button onclick="selectAllFilters()">Select all</button>
+                <button onclick="clearAllFilters()">Clear</button>
+            </div>
+            <div class="photo-count" id="photo-count">31 photographs shown</div>
+            <div class="instructions">
+                Click a marker to view the photo. Nearby points are grouped into clusters. Click a cluster to expand.
+            </div>
+            
+            <!-- Game Mode -->
+            <div class="filter-section game-section">
+                <h3>Treasure Hunt</h3>
+                <div id="game-controls">
+                    <button class="game-btn primary" onclick="startGame()" id="game-start-btn">Start Challenge</button>
+                    <p style="font-size:11px;color:#999;margin-top:4px;line-height:1.4;">Find the matching photo on the map. Each clue may have multiple correct answers!</p>
+                </div>
+                <div id="game-status" style="display:none;">
+                    <div class="game-stats">
+                        <div class="stat">
+                            <div class="stat-value" id="game-score">0</div>
+                            <div class="stat-label">Score</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="game-streak">0</div>
+                            <div class="stat-label">Streak</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value" id="game-round">1</div>
+                            <div class="stat-label">Round</div>
+                        </div>
+                    </div>
+                    <button class="game-btn" onclick="exitGame()">Exit Game</button>
+                </div>
+            </div>
+        </div>
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+        <div class="sidebar-right">
+            <!-- Normal photo panel -->
+            <div class="photo-panel" id="photo-panel">
+                <div class="no-photo-selected">
+                    Click a marker on the map to view photograph details
+                </div>
+            </div>
+            <!-- Modern satellite map (outside photo-panel so it persists) -->
+            <div class="modern-view-section" id="modern-view-section" style="display:none;">
+                <div class="modern-view-label">Modern Satellite View</div>
+                <div id="modern-map"></div>
+                <div class="modern-view-ps">
+                    P.S. 1. Due to time and population changes, the modern satellite image may not match the original location exactly.<br>
+                    2. Some handwriting in the original manuscripts is hard to read; unreadable characters are marked with "?".
+                </div>
+            </div>
+            <!-- Game panel (hidden by default) -->
+            <div class="photo-panel" id="game-panel" style="display:none;">
+                <div style="padding:20px;text-align:center;">
+                    <div style="font-size:14px;color:#8b6914;font-weight:600;margin-bottom:15px;">Photo Treasure Hunt</div>
+                    <div class="game-clue-box" id="game-clue-box">
+                        <div class="clue-label">Your Clue</div>
+                        <div class="clue-text" id="game-clue">Click Start to begin!</div>
+                    </div>
+                    <div id="game-feedback"></div>
+                    <div id="game-target-preview" style="margin:10px 0;"></div>
+                    <div style="font-size:11px;color:#999;margin-top:10px;line-height:1.5;">
+                        Click any marker on the map that matches the clue.<br>
+                        <span style="color:#8b6914;">Each clue may have multiple correct answers!</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="js/leaflet.js"></script>
+    <script src="js/leaflet.markercluster.js"></script>
+    <script src="data/M1_point_week5_format_m14_3.js"></script>
+    <script>
+    (function() {
+        var features = json_M1_point_week5_format_m14_3.features;
+        var villages = ['馬灣村', '黃泥屋村'];
+        var boxNos = [...new Set(features.map(f => f.properties['Box_no.']).filter(Boolean))].sort();
+        var subjects = [...new Set(features.map(f => f.properties['Subject']).filter(Boolean))].sort();
+        var precisions = [...new Set(features.map(f => f.properties['Precision']).filter(Boolean))].sort();
+
+        var map = L.map('map', {
+            zoomControl: false,
+            maxZoom: 28,
+            minZoom: 1
+        }).fitBounds([[22.272922687115173, 113.89308777348148], [22.30153266366811, 114.01150652927838]]);
+
+        L.control.zoom({ position: 'topleft' }).addTo(map);
+        L.control.scale({ position: 'bottomleft', metric: true, imperial: false }).addTo(map);
+        map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+
+        // Base maps
+        var topoLayers = [];
+        var img_9SEA_0 = L.imageOverlay('data/9SEA_0.png', [[22.273607952312364,113.89769308407159],[22.300758044667496,113.93413201704129]]);
+        var img_9SEA_1 = L.imageOverlay('data/9SEA_1.png', [[22.273607952312364,113.89769308407159],[22.300758044667496,113.93413201704129]]);
+        var img_9SEB_2 = L.imageOverlay('data/9SEB_2.png', [[22.273666401328807,113.93408524462212],[22.300808410150857,113.9705172786357]]);
+        topoLayers.push(img_9SEA_0, img_9SEA_1, img_9SEB_2);
+        topoLayers.forEach(function(l) { l.addTo(map); });
+
+        // Aerial photo layers (overlay on top of topo)
+        var aerialLayers = [];
+        var img_aerial_1 = L.imageOverlay('data/63D9SE8D00_3.png', [[22.27908664550362,113.93411125972408],[22.284515695281364,113.94139793561807]]);
+        var img_aerial_2 = L.imageOverlay('data/63D9SE8B00_4.png', [[22.2845049777764,113.93410190516055],[22.289934026843603,113.94138886434231]]);
+        aerialLayers.push(img_aerial_1, img_aerial_2);
+
+        var selectedLayer = null;
+        var currentPhotoIndex = -1;
+        var sortedFeatures = features.slice().sort(function(a, b) {
+            return (a.properties['File_name'] || '').localeCompare(b.properties['File_name'] || '');
+        });
+
+        var markersLayer = L.geoJson(features, {
+            pointToLayer: function(feature, latlng) {
+                return L.circleMarker(latlng, {
+                    radius: 6,
+                    fillColor: 'rgba(253, 191, 111, 0.9)',
+                    color: 'rgba(35, 35, 35, 0.8)',
+                    weight: 1.5,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                });
+            },
+            onEachFeature: function(feature, layer) {
+                // Tooltip for Place_name — hover to show
+                var placeName = feature.properties['Place_name'];
+                if (placeName) {
+                    layer.bindTooltip('<div style="color: #323232; font-size: 10pt; font-family: \'Open Sans\', sans-serif; white-space: nowrap;">' + escapeHtml(placeName) + '</div>', {
+                        offset: [0, -16],
+                        direction: 'top',
+                        className: 'place-name-tooltip'
+                    });
+                }
+                layer.on('click', function() {
+                    // Game mode: check answer first
+                    if (gameState.active) {
+                        var wasCorrect = handleGameClick(layer);
+                        if (!wasCorrect) {
+                            // Wrong answer: still highlight clicked marker briefly in red
+                            layer.setStyle({ color: '#c62828', weight: 3 });
+                            setTimeout(function() {
+                                layer.setStyle({ color: 'rgba(35, 35, 35, 0.8)', weight: 1.5 });
+                            }, 500);
+                        }
+                        return;
+                    }
+
+                    // Normal mode: show photo detail
+                    if (selectedLayer) {
+                        selectedLayer.setStyle({
+                            color: 'rgba(35, 35, 35, 0.8)',
+                            weight: 1.5
+                        });
+                    }
+                    selectedLayer = layer;
+                    layer.setStyle({
+                        color: '#ff4444',
+                        weight: 3
+                    });
+                    layer.bringToFront();
+                    showPhotoDetail(feature.properties);
+                });
+            }
+        });
+
+        var clusterGroup = L.markerClusterGroup({
+            showCoverageOnHover: false,
+            spiderfyDistanceMultiplier: 2,
+            maxClusterRadius: 50,
+            iconCreateFunction: function(cluster) {
+                return L.divIcon({
+                    html: '<div style="background:rgba(120,180,120,0.85);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;border:2px solid rgba(255,255,255,0.7);">' + cluster.getChildCount() + '</div>',
+                    className: 'marker-cluster',
+                    iconSize: L.point(28, 28)
+                });
+            }
+        });
+        clusterGroup.addLayer(markersLayer);
+        map.addLayer(clusterGroup);
+
+        var activeFilters = {
+            village: new Set(villages),
+            boxNo: new Set(boxNos),
+            subject: new Set(subjects),
+            precision: new Set(precisions)
+        };
+
+        function createFilterCheckboxes(containerId, items, category, dataKey) {
+            var container = document.getElementById(containerId);
+            items.forEach(function(item) {
+                var div = document.createElement('div');
+                div.className = 'filter-item';
+                var id = 'filter-' + category + '-' + item.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_');
+                div.innerHTML = '<input type="checkbox" id="' + id + '" checked data-category="' + category + '" data-value="' + item + '"><label for="' + id + '">' + item + '</label>';
+                container.appendChild(div);
+            });
+        }
+
+        createFilterCheckboxes('box-no-filters', boxNos, 'boxNo', 'Box_no.');
+        createFilterCheckboxes('subject-filters', subjects, 'subject', 'Subject');
+        createFilterCheckboxes('precision-filters', precisions, 'precision', 'Precision');
+
+        // Village filter change handler - show/hide sub-filters
+        document.querySelectorAll('#village-filters input[type="checkbox"]').forEach(function(cb) {
+            cb.addEventListener('change', function() {
+                var anyVillageChecked = document.querySelectorAll('#village-filters input[type="checkbox"]:checked').length > 0;
+                document.getElementById('sub-filters').style.display = anyVillageChecked ? 'block' : 'none';
+                applyFilters();
+            });
+        });
+
+        document.querySelectorAll('#sub-filters .filter-item input[type="checkbox"]').forEach(function(cb) {
+            cb.addEventListener('change', applyFilters);
+        });
+
+        // Initialize: show sub-filters by default since both villages are checked
+        document.getElementById('sub-filters').style.display = 'block';
+
+        function applyFilters() {
+            activeFilters.village.clear();
+            activeFilters.boxNo.clear();
+            activeFilters.subject.clear();
+            activeFilters.precision.clear();
+
+            document.querySelectorAll('#village-filters input[type="checkbox"]:checked').forEach(function(cb) {
+                activeFilters.village.add(cb.dataset.value);
+            });
+            document.querySelectorAll('#sub-filters input[type="checkbox"]:checked').forEach(function(cb) {
+                activeFilters[cb.dataset.category].add(cb.dataset.value);
+            });
+
+            clusterGroup.clearLayers();
+            var count = 0;
+            markersLayer.eachLayer(function(layer) {
+                var p = layer.feature.properties;
+                if (activeFilters.village.has(p['Village']) &&
+                    activeFilters.boxNo.has(p['Box_no.']) &&
+                    activeFilters.subject.has(p['Subject']) &&
+                    activeFilters.precision.has(p['Precision'])) {
+                    clusterGroup.addLayer(layer);
+                    count++;
+                }
+            });
+
+            document.getElementById('photo-count').textContent = count + ' photograph' + (count !== 1 ? 's' : '') + ' shown';
+        }
+
+        window.selectAllFilters = function() {
+            document.querySelectorAll('#village-filters input[type="checkbox"]').forEach(function(cb) {
+                cb.checked = true;
+            });
+            document.querySelectorAll('#sub-filters input[type="checkbox"]').forEach(function(cb) {
+                cb.checked = true;
+            });
+            document.getElementById('sub-filters').style.display = 'block';
+            applyFilters();
+        };
+
+        window.clearAllFilters = function() {
+            document.querySelectorAll('#village-filters input[type="checkbox"]').forEach(function(cb) {
+                cb.checked = false;
+            });
+            document.querySelectorAll('#sub-filters input[type="checkbox"]').forEach(function(cb) {
+                cb.checked = false;
+            });
+            document.getElementById('sub-filters').style.display = 'none';
+            applyFilters();
+        };
+
+        // Basemap switcher — toggle aerial photo overlay
+        function switchBasemap() {
+            var showAerial = document.getElementById('basemap-aerial').checked;
+            if (showAerial) {
+                aerialLayers.forEach(function(l) { map.addLayer(l); });
+            } else {
+                aerialLayers.forEach(function(l) { if (map.hasLayer(l)) map.removeLayer(l); });
+            }
+        }
+
+        document.getElementById('basemap-aerial').addEventListener('change', switchBasemap);
+
+        function updatePrecisionNote(precision) {
+            var noteEl = document.getElementById('left-precision-note');
+            if (!noteEl) return;
+            if (precision === 'Approximate') {
+                noteEl.innerHTML = '<div class="note-label">About Approximate</div>Coordinate from ALS address point. The subject is near the marker, not the exact spot.';
+                noteEl.className = 'precision-note';
+                noteEl.style.display = 'block';
+            } else if (precision === 'Village-level') {
+                noteEl.innerHTML = '<div class="note-label">About Village-level</div>No precise address. The coordinate shows the village center for reference only.';
+                noteEl.className = 'precision-note';
+                noteEl.style.display = 'block';
+            } else {
+                noteEl.innerHTML = '';
+                noteEl.style.display = 'none';
+            }
+        }
+
+        var modernMap = null;
+        var modernMarker = null;
+
+        function renderModernMap(latlng) {
+            setTimeout(function() {
+                var container = document.getElementById('modern-map');
+                if (!container) return;
+
+                if (!modernMap) {
+                    modernMap = L.map('modern-map', {
+                        zoomControl: false,
+                        attributionControl: false,
+                        dragging: false,
+                        scrollWheelZoom: false,
+                        doubleClickZoom: false,
+                        boxZoom: false
+                    });
+                    // Esri World Imagery (satellite) — free, no API key
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Esri',
+                        maxZoom: 19
+                    }).addTo(modernMap);
+                }
+
+                modernMap.setView(latlng, 19);
+
+                if (modernMarker) {
+                    modernMarker.setLatLng(latlng);
+                } else {
+                    modernMarker = L.circleMarker(latlng, {
+                        radius: 5,
+                        fillColor: '#ff4444',
+                        color: '#fff',
+                        weight: 2,
+                        fillOpacity: 0.9
+                    }).addTo(modernMap);
+                }
+            }, 0);
+        }
+
+        function showPhotoDetail(props) {
+            // Find index in sorted order
+            var fileName = props['File_name'] || '';
+            for (var i = 0; i < sortedFeatures.length; i++) {
+                if (sortedFeatures[i].properties['File_name'] === fileName) {
+                    currentPhotoIndex = i;
+                    break;
+                }
+            }
+            renderPhotoPanel();
+            // Update precision note only when user clicks a marker
+            updatePrecisionNote(props['Precision']);
+        }
+
+        function renderPhotoPanel() {
+            if (currentPhotoIndex < 0 || currentPhotoIndex >= sortedFeatures.length) return;
+            var props = sortedFeatures[currentPhotoIndex].properties;
+            var photoPath = props['Photograph'];
+            var imgName = photoPath ? photoPath.replace(/[\\/:]/g, '_').trim() : '';
+            var imgSrc = imgName ? 'images/' + imgName : '';
+
+            var html = '<div class="photo-image-wrapper">';
+            html += '<button class="photo-nav-btn prev' + (currentPhotoIndex <= 0 ? ' disabled' : '') + '" onclick="prevPhoto()"' + (currentPhotoIndex <= 0 ? ' disabled' : '') + '>&#10094;</button>';
+            if (imgSrc) {
+            html += '<img src="' + imgSrc + '" alt="' + (props['File_name'] || '') + '" onerror="this.parentElement.innerHTML=\'<div class=\\\'photo-image-placeholder\\\'>Image not available</div>\'">';
+            } else {
+                html += '<div class="photo-image-placeholder">No image</div>';
+            }
+            html += '<button class="photo-nav-btn next' + (currentPhotoIndex >= sortedFeatures.length - 1 ? ' disabled' : '') + '" onclick="nextPhoto()"' + (currentPhotoIndex >= sortedFeatures.length - 1 ? ' disabled' : '') + '>&#10095;</button>';
+            html += '</div>';
+
+            html += '<div class="photo-details">';
+            html += '<div class="label">Photograph</div>';
+            html += '<div class="photo-id">' + (props['File_name'] || '') + '</div>';
+            html += '<div class="place-name">' + (props['Place_name'] || '') + '</div>';
+
+            html += '<table class="photo-meta-table">';
+            var fields = [
+                { key: 'Date', label: 'Capture date' },
+                { key: 'Subject', label: 'Photo subject' },
+                { key: 'Direction', label: 'Direction' },
+                { key: 'Precision', label: 'Location precision' },
+                { key: 'Source', label: 'Location source' },
+                { key: 'Photographer', label: 'Notes' }
+            ];
+            fields.forEach(function(f) {
+                var val = props[f.key];
+                if (val) {
+                    var text = String(val);
+                    if (f.truncate && text.length > f.truncate) {
+                        text = text.substring(0, f.truncate) + '...';
+                    }
+                    html += '<tr><td>' + f.label + '</td><td>' + escapeHtml(text) + '</td></tr>';
+                }
+            });
+            html += '</table>';
+            html += '</div>';
+
+            document.getElementById('photo-panel').innerHTML = html;
+
+            // Show modern satellite view
+            var modernSection = document.getElementById('modern-view-section');
+            if (modernSection) modernSection.style.display = 'block';
+
+            // Render modern satellite map
+            var coords = sortedFeatures[currentPhotoIndex].geometry.coordinates;
+            renderModernMap([coords[1], coords[0]]);
+        }
+
+        window.prevPhoto = function() {
+            if (currentPhotoIndex > 0) {
+                currentPhotoIndex--;
+                var props = sortedFeatures[currentPhotoIndex].properties;
+                renderPhotoPanel();
+                // Pan map to the photo location
+                var coords = sortedFeatures[currentPhotoIndex].geometry.coordinates;
+                map.panTo([coords[1], coords[0]]);
+                // Highlight corresponding marker
+                highlightMarkerByFileName(props['File_name']);
+                // Update precision note
+                updatePrecisionNote(props['Precision']);
+            }
+        };
+
+        window.nextPhoto = function() {
+            if (currentPhotoIndex < sortedFeatures.length - 1) {
+                currentPhotoIndex++;
+                var props = sortedFeatures[currentPhotoIndex].properties;
+                renderPhotoPanel();
+                var coords = sortedFeatures[currentPhotoIndex].geometry.coordinates;
+                map.panTo([coords[1], coords[0]]);
+                highlightMarkerByFileName(props['File_name']);
+                // Update precision note
+                updatePrecisionNote(props['Precision']);
+            }
+        };
+
+        function highlightMarkerByFileName(fileName) {
+            markersLayer.eachLayer(function(layer) {
+                if (layer.feature.properties['File_name'] === fileName) {
+                    if (selectedLayer) {
+                        selectedLayer.setStyle({ color: 'rgba(35, 35, 35, 0.8)', weight: 1.5 });
+                    }
+                    selectedLayer = layer;
+                    layer.setStyle({ color: '#ff4444', weight: 3 });
+                    layer.bringToFront();
+                }
+            });
+        }
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== GAME MODE ====================
+        var gameState = {
+            active: false,
+            score: 0,
+            streak: 0,
+            round: 1,
+            maxRounds: 10,
+            currentClue: null,
+            attempts: 0,
+            waitingForNext: false
+        };
+
+        // Pre-compute clue pools from data
+        var cluePools = {
+            shrine: { label: 'shrine', display: '\u795e\u58c7', check: function(p) { return p['Subject'] === 'shrine'; } },
+            ritual: { label: 'ritual', display: '\u796d\u7940', check: function(p) { return p['Subject'] === 'ritual'; } },
+            farmland: { label: 'farmland', display: '\u8fb2\u5730', check: function(p) { return p['Subject'] === 'farmland'; } },
+            villageHouse: { label: 'village house', display: '\u6c11\u5c45', check: function(p) { return p['Subject'] === 'village house'; } },
+            villageScene: { label: 'village scene', display: '\u6751\u843d\u98a8\u666f', check: function(p) { return p['Subject'] === 'village scene'; } },
+            maWan: { label: '馬灣村', display: '\u99ac\u7063\u6751', check: function(p) { return p['Village'] === '\u99ac\u7063\u6751'; } },
+            wongNai: { label: '黃泥屋村', display: '\u9ec3\u6ce5\u5c4b\u6751', check: function(p) { return p['Village'] === '\u9ec3\u6ce5\u5c4b\u6751'; } }
+        };
+
+        // Build dynamic location-keyword clues from actual place names
+        function buildLocationClues() {
+            var keywords = [];
+            features.forEach(function(f) {
+                var place = f.properties['Place_name'] || '';
+                // Extract number patterns like "25號"
+                var match = place.match(/(\d+號)/);
+                if (match && !keywords.includes(match[1])) {
+                    keywords.push(match[1]);
+                }
+            });
+            return keywords;
+        }
+        var locationKeywords = buildLocationClues();
+
+        function generateClue() {
+            var clueTypes = [
+                // Single subject clues (multiple correct answers possible)
+                { weight: 3, build: function() {
+                    var subjects = ['shrine', 'ritual', 'farmland', 'village house'];
+                    var pick = subjects[Math.floor(Math.random() * subjects.length)];
+                    var pool = cluePools[pick];
+                    return {
+                        text: 'Find a photo about "' + pool.display + '"',
+                        check: pool.check,
+                        category: 'subject'
+                    };
+                }},
+                // Village clues
+                { weight: 2, build: function() {
+                    var villages = ['maWan', 'wongNai'];
+                    var pick = villages[Math.floor(Math.random() * villages.length)];
+                    var pool = cluePools[pick];
+                    return {
+                        text: 'Find a photo in "' + pool.display + '"',
+                        check: pool.check,
+                        category: 'village'
+                    };
+                }},
+                // Location keyword clues
+                { weight: 2, build: function() {
+                    var kw = locationKeywords[Math.floor(Math.random() * locationKeywords.length)];
+                    return {
+                        text: 'Find a photo near "Ma Wan Village ' + kw + '"',
+                        check: function(p) {
+                            var place = p['Place_name'] || '';
+                            return place.indexOf(kw) >= 0;
+                        },
+                        category: 'location'
+                    };
+                }},
+                // Open-ended theme clues (multiple subjects accepted)
+                { weight: 2, build: function() {
+                    var themes = [
+                        { text: 'Find a photo with religious elements (shrine or ritual)', check: function(p) { return p['Subject'] === 'shrine' || p['Subject'] === 'ritual'; } },
+                        { text: 'Find a photo related to buildings (house or shrine)', check: function(p) { return p['Subject'] === 'village house' || p['Subject'] === 'shrine'; } },
+                        { text: 'Find a photo of farmland or natural scenery', check: function(p) { return p['Subject'] === 'farmland' || p['Subject'] === 'village scene'; } }
+                    ];
+                    return themes[Math.floor(Math.random() * themes.length)];
+                }}
+            ];
+
+            // Weighted random selection
+            var totalWeight = clueTypes.reduce(function(sum, c) { return sum + c.weight; }, 0);
+            var rand = Math.random() * totalWeight;
+            var accum = 0;
+            for (var i = 0; i < clueTypes.length; i++) {
+                accum += clueTypes[i].weight;
+                if (rand < accum) {
+                    return clueTypes[i].build();
+                }
+            }
+            return clueTypes[0].build();
+        }
+
+        function startGame() {
+            gameState.active = true;
+            gameState.score = 0;
+            gameState.streak = 0;
+            gameState.round = 1;
+            gameState.attempts = 0;
+            gameState.waitingForNext = false;
+
+            document.getElementById('photo-panel').style.display = 'none';
+            document.getElementById('game-panel').style.display = 'block';
+            document.getElementById('game-controls').style.display = 'none';
+            document.getElementById('game-status').style.display = 'block';
+
+            // Hide precision note in left sidebar when game starts
+            var noteEl = document.getElementById('left-precision-note');
+            if (noteEl) { noteEl.style.display = 'none'; }
+
+            // Hide modern satellite view when game starts
+            var modernSection = document.getElementById('modern-view-section');
+            if (modernSection) modernSection.style.display = 'none';
+
+            // Restore game-status HTML
+            document.getElementById('game-status').innerHTML =
+                '<div class="game-stats">' +
+                '<div class="stat"><div class="stat-value" id="game-score">0</div><div class="stat-label">Score</div></div>' +
+                '<div class="stat"><div class="stat-value" id="game-streak">0</div><div class="stat-label">Streak</div></div>' +
+                '<div class="stat"><div class="stat-value" id="game-round">1</div><div class="stat-label">Round</div></div>' +
+                '</div>' +
+                '<button class="game-btn" onclick="exitGame()">Exit Game</button>';
+
+            updateGameStats();
+            nextRound();
+        }
+
+        function exitGame() {
+            gameState.active = false;
+            gameState.currentClue = null;
+
+            document.getElementById('photo-panel').style.display = 'block';
+            document.getElementById('game-panel').style.display = 'none';
+            document.getElementById('game-controls').style.display = 'block';
+            document.getElementById('game-status').style.display = 'none';
+            document.getElementById('game-feedback').innerHTML = '';
+
+            // Clear candidate highlights
+            clearCandidateHighlight();
+
+            // Hide precision note in left sidebar
+            var noteEl = document.getElementById('left-precision-note');
+            if (noteEl) { noteEl.style.display = 'none'; }
+
+            // Show modern satellite view if a photo was previously selected
+            if (currentPhotoIndex >= 0) {
+                var modernSection = document.getElementById('modern-view-section');
+                if (modernSection) modernSection.style.display = 'block';
+            }
+
+            // Reset any game highlights
+            if (selectedLayer) {
+                selectedLayer.setStyle({ color: 'rgba(35, 35, 35, 0.8)', weight: 1.5 });
+                selectedLayer = null;
+            }
+        }
+
+        function highlightCandidates(clue) {
+            var count = 0;
+            markersLayer.eachLayer(function(layer) {
+                var isCandidate = clue.check(layer.feature.properties);
+                if (isCandidate) {
+                    layer.setStyle({
+                        fillColor: '#ffd700',
+                        color: '#b8860b',
+                        weight: 2.5,
+                        radius: 8,
+                        fillOpacity: 0.9
+                    });
+                    layer._isGameCandidate = true;
+                    count++;
+                } else {
+                    layer.setStyle({
+                        fillColor: 'rgba(200, 200, 200, 0.4)',
+                        color: 'rgba(150, 150, 150, 0.5)',
+                        weight: 1,
+                        radius: 4,
+                        fillOpacity: 0.4
+                    });
+                    layer._isGameCandidate = false;
+                }
+            });
+            return count;
+        }
+
+        function clearCandidateHighlight() {
+            markersLayer.eachLayer(function(layer) {
+                layer.setStyle({
+                    fillColor: 'rgba(253, 191, 111, 0.9)',
+                    color: 'rgba(35, 35, 35, 0.8)',
+                    weight: 1.5,
+                    radius: 6,
+                    fillOpacity: 0.9
+                });
+                layer._isGameCandidate = false;
+            });
+        }
+
+        function nextRound() {
+            if (gameState.round > gameState.maxRounds) {
+                endGame();
+                return;
+            }
+
+            gameState.attempts = 0;
+            gameState.currentClue = generateClue();
+
+            // Highlight candidate markers on the map
+            var candidateCount = highlightCandidates(gameState.currentClue);
+
+            document.getElementById('game-clue').innerHTML =
+                '<div style="font-size:13px;color:#5c4a1e;font-weight:600;">' + gameState.currentClue.text + '</div>' +
+                '<div style="font-size:11px;color:#b8860b;margin-top:6px;">' + candidateCount + ' matching photo' + (candidateCount > 1 ? 's' : '') + ' on the map</div>';
+            document.getElementById('game-feedback').innerHTML = '';
+            document.getElementById('game-target-preview').innerHTML = '';
+            updateGameStats();
+        }
+
+        function handleGameClick(layer) {
+            if (!gameState.active || !gameState.currentClue || gameState.waitingForNext) return false;
+
+            var clickedProps = layer.feature.properties;
+            gameState.attempts++;
+
+            // Check if clicked photo matches the clue criteria
+            if (gameState.currentClue.check(clickedProps)) {
+                // Correct!
+                var points = 100;
+                gameState.score += points;
+                gameState.streak++;
+                gameState.waitingForNext = true;
+
+                showFeedback('correct', 'Correct! +' + points + ' points');
+
+                // Show full photo detail with metadata in the game panel
+                var photoPath = clickedProps['Photograph'];
+                var imgName = photoPath ? photoPath.replace(/[\\/:]/g, '_').trim() : '';
+                var imgSrc = imgName ? 'images/' + imgName : '';
+
+                var detailHtml = '<div class="photo-image-wrapper" style="height:160px;">';
+                detailHtml += '<button class="photo-nav-btn prev disabled" disabled>&#10094;</button>';
+                if (imgSrc) {
+                    detailHtml += '<img src="' + imgSrc + '" alt="' + (clickedProps['File_name'] || '') + '" style="max-height:160px;" onerror="this.parentElement.innerHTML=\'<div class=\\\'photo-image-placeholder\\\'>Image not available</div>\'">';
+                } else {
+                    detailHtml += '<div class="photo-image-placeholder">No image</div>';
+                }
+                detailHtml += '<button class="photo-nav-btn next disabled" disabled>&#10095;</button>';
+                detailHtml += '</div>';
+
+                detailHtml += '<div class="photo-details">';
+                detailHtml += '<div class="label">Photograph</div>';
+                detailHtml += '<div class="photo-id">' + (clickedProps['File_name'] || '') + '</div>';
+                detailHtml += '<div class="place-name">' + (clickedProps['Place_name'] || '') + '</div>';
+
+                detailHtml += '<table class="photo-meta-table">';
+                var fields = [
+                    { key: 'Date', label: 'Capture date' },
+                    { key: 'Subject', label: 'Photo subject' },
+                    { key: 'Direction', label: 'Direction' },
+                    { key: 'Precision', label: 'Location precision' },
+                    { key: 'Source', label: 'Location source' },
+                    { key: 'Photographer', label: 'Notes' }
+                ];
+                fields.forEach(function(f) {
+                    var val = clickedProps[f.key];
+                    if (val) {
+                        detailHtml += '<tr><td>' + f.label + '</td><td>' + escapeHtml(String(val)) + '</td></tr>';
+                    }
+                });
+                detailHtml += '</table>';
+                detailHtml += '</div>';
+
+                document.getElementById('game-target-preview').innerHTML = detailHtml;
+
+                // Update precision note in left sidebar
+                updatePrecisionNote(clickedProps['Precision']);
+
+                // Clear candidate highlights first
+                clearCandidateHighlight();
+
+                // Highlight correct marker in green
+                if (selectedLayer) {
+                    selectedLayer.setStyle({ color: 'rgba(35, 35, 35, 0.8)', weight: 1.5 });
+                }
+                selectedLayer = layer;
+                layer.setStyle({ color: '#4caf50', weight: 4 });
+                layer.bringToFront();
+
+                // Show "Next Question" button
+                var nextBtnHtml = '<button class="game-btn primary" onclick="gameNextRound()" style="margin-top:12px;width:100%;">Next Question \u2192</button>';
+                if (gameState.round >= gameState.maxRounds) {
+                    nextBtnHtml = '<button class="game-btn primary" onclick="gameNextRound()" style="margin-top:12px;width:100%;">View Result \u2192</button>';
+                }
+                document.getElementById('game-feedback').innerHTML =
+                    '<div class="game-feedback correct">Correct! +' + points + ' points</div>' +
+                    nextBtnHtml;
+
+                updateGameStats();
+                return true;
+            } else {
+                // Wrong — give helpful hint based on what they clicked
+                gameState.streak = 0;
+                var clickedSubject = clickedProps['Subject'] || 'unknown';
+                var clickedPlace = clickedProps['Place_name'] || 'unknown';
+                var clickedVillage = clickedProps['Village'] || 'unknown';
+
+                var hint = '';
+                if (gameState.currentClue.category === 'subject') {
+                    hint = 'Hint: this is "' + clickedSubject + '", try another marker!';
+                } else if (gameState.currentClue.category === 'village') {
+                    hint = 'Hint: this is in "' + clickedVillage + '", try another village!';
+                } else if (gameState.currentClue.category === 'location') {
+                    hint = 'Hint: this is at "' + clickedPlace + '", look elsewhere!';
+                } else {
+                    hint = 'Hint: this subject is "' + clickedSubject + '", try again!';
+                }
+
+                if (gameState.attempts >= 3) {
+                    hint += ' (Tip: each clue may have multiple correct answers!)';
+                }
+
+                showFeedback('wrong', 'Not quite! ' + hint);
+                updateGameStats();
+                return false;
+            }
+        }
+
+        function showFeedback(type, message) {
+            var fb = document.getElementById('game-feedback');
+            fb.className = 'game-feedback ' + type;
+            fb.textContent = message;
+        }
+
+        function updateGameStats() {
+            document.getElementById('game-score').textContent = gameState.score;
+            document.getElementById('game-streak').textContent = gameState.streak;
+            document.getElementById('game-round').textContent = gameState.round;
+        }
+
+        function endGame() {
+            var message = '';
+            if (gameState.score >= 900) {
+                message = 'Amazing! You are a true Tung Chung explorer!';
+            } else if (gameState.score >= 700) {
+                message = 'Great job! You know this place very well!';
+            } else if (gameState.score >= 500) {
+                message = 'Not bad! Keep exploring!';
+            } else {
+                message = 'Keep practicing! You will get better with more tries!';
+            }
+
+            document.getElementById('game-clue').innerHTML = '<div style="font-size:16px;color:#8b6914;">Game Over!</div><div style="font-size:13px;margin-top:8px;">' + message + '</div><div style="font-size:18px;font-weight:700;margin-top:10px;">Final Score: ' + gameState.score + '</div>';
+            document.getElementById('game-feedback').innerHTML = '';
+            document.getElementById('game-target-preview').innerHTML = '';
+
+            // Hide precision note in left sidebar
+            var noteEl = document.getElementById('left-precision-note');
+            if (noteEl) { noteEl.style.display = 'none'; }
+
+            // Hide modern satellite view
+            var modernSection = document.getElementById('modern-view-section');
+            if (modernSection) modernSection.style.display = 'none';
+
+            // Change to Play Again / Back to Browse
+            document.getElementById('game-status').innerHTML =
+                '<div class="game-stats"><div class="stat"><div class="stat-value">' + gameState.score + '</div><div class="stat-label">Final Score</div></div></div>' +
+                '<button class="game-btn primary" onclick="startGame()">Play Again</button>' +
+                '<button class="game-btn" onclick="exitGame()" style="margin-top:6px;">Back to Browse</button>';
+        }
+
+        function gameNextRound() {
+            gameState.waitingForNext = false;
+            gameState.round++;
+            if (selectedLayer) {
+                selectedLayer.setStyle({ color: 'rgba(35, 35, 35, 0.8)', weight: 1.5 });
+                selectedLayer = null;
+            }
+            nextRound();
+        }
+
+        // Make game functions globally accessible
+        window.startGame = startGame;
+        window.exitGame = exitGame;
+        window.gameNextRound = gameNextRound;
+
+        // Keyboard shortcuts: arrow keys to navigate photos
+        document.addEventListener('keydown', function(e) {
+            if (gameState.active) return; // Don't interfere with game mode
+            if (currentPhotoIndex < 0) return; // No photo selected
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (currentPhotoIndex > 0) prevPhoto();
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                if (currentPhotoIndex < sortedFeatures.length - 1) nextPhoto();
+            }
+        });
+
+        document.getElementById('photo-count').textContent = features.length + ' photographs shown';
+        applyFilters();
+
+        // Auto-select first photo on page load
+        if (sortedFeatures.length > 0) {
+            currentPhotoIndex = 0;
+            renderPhotoPanel();
+        }
+    })();
+    </script>
+</body>
+</html>
